@@ -1,0 +1,35 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Front test</title>
+</head>
+<body>
+    <input type="text" id="text">
+    <input type="text" id="cap">
+    <input type="file" id="file" multiple>
+    <button onclick="sendSave()">Send</button>
+</body>
+<script>
+    function sendSave() {
+        const text = document.getElementById("text").value;
+        const cap = document.getElementById("cap").value;
+        const files = document.getElementById("file").files;
+
+        const formData = new FormData();
+        formData.append("text", text);
+        formData.append("caption", cap);
+        for (let i = 0; i < files.length; i++) {
+            formData.append("files[]", files[i]);
+        }
+
+        fetch("http://localhost:7272/multipart-test", {
+            method: "POST",
+            body: formData
+        })
+            .then(res => res.json())
+            .then(console.log)
+            .catch(console.log);
+    }
+</script>
+</html>

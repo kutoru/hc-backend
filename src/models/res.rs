@@ -1,4 +1,5 @@
 use serde::Serialize;
+pub use axum::Json;
 
 #[derive(Debug, Serialize, Clone)]
 pub struct ServerResult<T> {
@@ -11,5 +12,6 @@ pub struct ServerResult<T> {
 macro_rules! res_body {
     ($success:expr, $msg:expr, $data:expr) => {
         Json(ServerResult { success: $success, msg: $msg, data: $data })
+        // Json(json!({ "success": $success, "msg": $msg, "data": $data }))
     }
 }
