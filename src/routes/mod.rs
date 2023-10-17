@@ -4,7 +4,6 @@ use sqlx::SqlitePool;
 use tower_http::cors::{CorsLayer, AllowOrigin, AllowHeaders};
 
 mod saves;
-mod multipart;
 
 /// Initializes the server's router
 pub fn get_router(pool: SqlitePool) -> Router {
@@ -14,10 +13,8 @@ pub fn get_router(pool: SqlitePool) -> Router {
         .allow_headers(AllowHeaders::any());
 
     let saves_router = saves::get_router(pool);
-    let multipart_router = multipart::get_router();
 
     Router::new()
-        .merge(multipart_router)
         .merge(saves_router)
         .layer(cors)
         .route_layer(middleware::from_fn(mw))

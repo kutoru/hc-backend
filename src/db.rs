@@ -12,7 +12,7 @@ pub async fn get_pool() -> SqlitePool {
         .unwrap()
 }
 
-pub async fn reset(pool: &SqlitePool) {
+pub async fn _reset(pool: &SqlitePool) {
     println!("Resetting the DB");
 
     let query = fs::read_to_string("./create_db.sql").unwrap();

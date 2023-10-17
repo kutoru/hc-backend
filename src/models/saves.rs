@@ -1,24 +1,13 @@
-use serde::{Deserialize, Serialize};
+use serde:: Serialize;
 use chrono::{Utc, DateTime};
-
-#[derive(Debug, Deserialize)]
-pub struct NewSaveFile {
-    pub save_id: i64,
-    pub filename: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct NewSave {
-    pub text: String,
-    pub caption: String,
-    pub files: Option<Vec<NewSaveFile>>,
-}
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
 pub struct SaveFile {
-    pub uuid: String,
+    pub id: i64,
     pub save_id: i64,
-    pub filename: String,
+    pub hash_name: String,
+    pub file_name: String,
+    pub file_size: i64,
     pub created: DateTime<Utc>,
 }
 
@@ -30,10 +19,11 @@ pub struct Save {
     pub created: DateTime<Utc>,
 }
 
+#[derive(Debug, Serialize)]
 pub struct SaveWithFiles {
     pub id: i64,
     pub text: String,
     pub caption: String,
     pub created: DateTime<Utc>,
-    pub files: Option<Vec<SaveFile>>,
+    pub files: Vec<SaveFile>,
 }

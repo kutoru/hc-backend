@@ -11,9 +11,11 @@ CREATE TABLE saves (
 );
 
 CREATE TABLE saves_files (
-    uuid TEXT PRIMARY KEY NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     save_id INTEGER NOT NULL,
-    filename TEXT NOT NULL,
+    hash_name TEXT UNIQUE NOT NULL,
+    file_name TEXT NOT NULL,
+    file_size BIGINT NOT NULL,
     created DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
     FOREIGN KEY (save_id) REFERENCES saves(id)
 );

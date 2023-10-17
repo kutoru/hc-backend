@@ -12,7 +12,7 @@ async fn main() {
 
     // Setting up the db
     let pool = db::get_pool().await;
-    db::reset(&pool).await;
+    db::_reset(&pool).await;
 
     // Setting up the routes
     let app = routes::get_router(pool);
