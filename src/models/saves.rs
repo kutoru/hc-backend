@@ -2,7 +2,7 @@ use serde:: Serialize;
 use chrono::{Utc, DateTime};
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
-pub struct SaveFile {
+pub struct FileInfo {
     pub id: i64,
     pub save_id: i64,
     pub hash_name: String,
@@ -25,5 +25,5 @@ pub struct SaveWithFiles {
     pub text: String,
     pub caption: String,
     pub created: DateTime<Utc>,
-    pub files: Vec<SaveFile>,
+    pub files: Vec<FileInfo>,
 }

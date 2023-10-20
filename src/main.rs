@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 mod db;
 mod models;
 mod routes;
+mod error;
 
 #[tokio::main]
 async fn main() {
@@ -12,7 +13,7 @@ async fn main() {
 
     // Setting up the db
     let pool = db::get_pool().await;
-    db::_reset(&pool).await;
+    // db::_reset(&pool).await;
 
     // Setting up the routes
     let app = routes::get_router(pool);
