@@ -1,6 +1,5 @@
-use axum::{Router, routing::{get, patch}, response::IntoResponse, http::{StatusCode, HeaderMap, header}, Json, Extension, extract::{Multipart, DefaultBodyLimit, Path}, body::StreamBody};
+use axum::{Router, routing::{get, patch}, response::IntoResponse, http::StatusCode, Json, Extension, extract::{Multipart, DefaultBodyLimit, Path}, handler::Handler};
 use tokio::io::AsyncWriteExt;
-use tokio_util::io::ReaderStream;
 use tower_http::limit::RequestBodyLimitLayer;
 use sqlx::SqlitePool;
 use uuid::Uuid;
@@ -8,11 +7,12 @@ use crate::{res_body, models::{res::*, Save, FileInfo, SaveWithFiles}, error::{S
 
 pub fn get_router(pool: SqlitePool) -> Router {
     Router::new()
-        .route("/saves", get(saves_get).post(saves_post))
-        .route("/saves/:id", patch(saves_patch).delete(saves_delete))
-        .route("/files/:id", get(files_get).delete(files_delete))
-        .layer(DefaultBodyLimit::disable())
-        .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024 * 1024))  // 10 GB
+        .route("/saves", get(saves_get).post(
+            saves_post
+                .layer(DefaultBodyLimit::disable())
+                .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024 * 1024))  // 10 GB
+        ))
+        .route("/saves/:id", patch(save_patch).delete(save_delete))
         .layer(Extension(pool))
 }
 
@@ -160,48 +160,17 @@ async fn parse_multipart(
 }
 
 // TODO: make this take a json body that would contain new text and caption
-async fn saves_patch(
+async fn save_patch(
     Path(save_id): Path<i64>,
     Extension(pool): Extension<SqlitePool>,
 ) -> impl IntoResponse {
-    (StatusCode::OK, res_body!(true, Some("patch save".into()), Some(save_id)))
+    StatusCode::NOT_IMPLEMENTED
 }
 
 // TODO: delete the save and all associated files
-async fn saves_delete(
+async fn save_delete(
     Path(save_id): Path<i64>,
     Extension(pool): Extension<SqlitePool>,
 ) -> impl IntoResponse {
-    (StatusCode::OK, res_body!(true, Some("delete save".into()), Some(save_id)))
-}
-
-// TODO: assign a proper name to the file and send it
-async fn files_get(
-    Path(file_id): Path<i64>,
-    Extension(pool): Extension<SqlitePool>,
-) -> Result<impl IntoResponse, ResError> {
-    let file_info = sqlx::query_as::<_, FileInfo>("SELECT * FROM files WHERE id = ?;")
-        .bind(file_id)
-        .fetch_one(&pool).await?;
-
-    let file_path = format!("./files/{}", file_info.hash_name);
-    let file = tokio::fs::File::open(file_path).await?;
-    let stream = ReaderStream::new(file);
-    let body = StreamBody::new(stream);
-
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::CONTENT_DISPOSITION,
-        format!("attachment; filename=\"{}\"", file_info.file_name).parse()?,
-    );
-
-    Ok((headers, body))
-}
-
-// TODO: delete the file from disk and from the db
-async fn files_delete(
-    Path(file_id): Path<i64>,
-    Extension(pool): Extension<SqlitePool>,
-) -> impl IntoResponse {
-    (StatusCode::OK, res_body!(true, Some("delete file".into()), Some(file_id)))
+    StatusCode::NOT_IMPLEMENTED
 }
