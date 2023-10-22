@@ -1,9 +1,9 @@
-use axum::{Router, routing::{get, patch}, response::IntoResponse, http::StatusCode, Json, Extension, extract::{Multipart, DefaultBodyLimit, Path}, handler::Handler};
+use axum::{Router, routing::{get, patch}, http::StatusCode, Json, Extension, extract::{Multipart, DefaultBodyLimit, Path}, handler::Handler};
 use tokio::io::AsyncWriteExt;
 use tower_http::limit::RequestBodyLimitLayer;
 use sqlx::SqlitePool;
 use uuid::Uuid;
-use crate::{res_body, models::{res::*, Save, FileInfo, SaveWithFiles}, error::{ServerResult, ResError}};
+use crate::{res_body, models::{res::*, Save, FileInfo, SaveWithFiles, SavePatch}, error::{ServerResult, ResError}};
 
 pub fn get_router(pool: SqlitePool) -> Router {
     Router::new()
@@ -50,14 +50,10 @@ async fn saves_post(
     let (text, caption, files) = parse_multipart(multipart).await?;
 
     // Inserting the save
-    let result = sqlx::query("INSERT INTO saves (text, caption) VALUES (?, ?);")
+    let save_id = sqlx::query("INSERT INTO saves (text, caption) VALUES (?, ?);")
         .bind(text).bind(caption)
-        .execute(&pool).await?;
-
-    let save_id = result.last_insert_rowid();
-    if result.rows_affected() < 1 {
-        return Err(ResError::ServerError("Could not insert the save".into()));
-    }
+        .execute(&pool).await?
+        .last_insert_rowid();
 
     // Inserting the files' info
     if files.len() > 0 {
@@ -69,13 +65,8 @@ async fn saves_post(
             query_str += &format!("({},'{}','{}',{})", save_id, files[i].0, files[i].1, files[i].2);
         }
 
-        let rows_inserted = sqlx::query(&query_str)
-            .execute(&pool).await?
-            .rows_affected();
-
-        if rows_inserted != files.len() as u64 {
-            return Err(ResError::ServerError("Could not insert some or all files".into()));
-        }
+        sqlx::query(&query_str)
+            .execute(&pool).await?;
     }
 
     // Sending the response
@@ -159,18 +150,44 @@ async fn parse_multipart(
     Ok((text.unwrap(), caption.unwrap(), files))
 }
 
-// TODO: make this take a json body that would contain new text and caption
 async fn save_patch(
     Path(save_id): Path<i64>,
     Extension(pool): Extension<SqlitePool>,
-) -> impl IntoResponse {
-    StatusCode::NOT_IMPLEMENTED
+    Json(body): Json<SavePatch>,
+) -> ServerResult<Save> {
+
+    sqlx::query("UPDATE saves SET text = ?, caption = ? WHERE id = ?;")
+        .bind(body.text).bind(body.caption).bind(save_id)
+        .execute(&pool).await?;
+
+    let save = sqlx::query_as::<_, Save>("SELECT * FROM saves WHERE id = ?;")
+        .bind(save_id)
+        .fetch_one(&pool).await?;
+
+    Ok((StatusCode::OK, res_body!(true, None, Some(save))))
 }
 
-// TODO: delete the save and all associated files
 async fn save_delete(
     Path(save_id): Path<i64>,
     Extension(pool): Extension<SqlitePool>,
-) -> impl IntoResponse {
-    StatusCode::NOT_IMPLEMENTED
+) -> ServerResult<()> {
+
+    let files = sqlx::query_as::<_, FileInfo>("SELECT * FROM files WHERE save_id = ?;")
+        .bind(save_id)
+        .fetch_all(&pool).await?;
+
+    sqlx::query("DELETE FROM files WHERE save_id = ?;")
+        .bind(save_id)
+        .execute(&pool).await?;
+
+    for file_info in files {
+        let file_path = format!("./files/{}", file_info.hash_name);
+        tokio::fs::remove_file(file_path).await?;
+    }
+
+    sqlx::query("DELETE FROM saves WHERE id = ?;")
+        .bind(save_id)
+        .execute(&pool).await?;
+
+    Ok((StatusCode::OK, res_body!(true, None, None)))
 }

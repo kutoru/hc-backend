@@ -2,7 +2,7 @@ use axum::{Router, routing::get, extract::Path, Extension, response::IntoRespons
 use sqlx::SqlitePool;
 use tokio_util::io::ReaderStream;
 
-use crate::{error::ResError, models::FileInfo};
+use crate::{error::{ResError, ServerResult}, models::FileInfo, res_body, models::res::*};
 
 pub fn get_router(pool: SqlitePool) -> Router {
     Router::new()
@@ -32,10 +32,21 @@ async fn file_get(
     Ok((headers, body))
 }
 
-// TODO: delete the file from disk and from the db
 async fn file_delete(
     Path(file_id): Path<i64>,
     Extension(pool): Extension<SqlitePool>,
-) -> impl IntoResponse {
-    StatusCode::NOT_IMPLEMENTED
+) -> ServerResult<()> {
+
+    let file_info = sqlx::query_as::<_, FileInfo>("SELECT * FROM files WHERE id = ?;")
+        .bind(file_id)
+        .fetch_one(&pool).await?;
+
+    sqlx::query("DELETE FROM files WHERE id = ?;")
+        .bind(file_id)
+        .execute(&pool).await?;
+
+    let file_path = format!("./files/{}", file_info.hash_name);
+    tokio::fs::remove_file(file_path).await?;
+
+    Ok((StatusCode::OK, res_body!(true, None, None)))
 }
