@@ -9,9 +9,6 @@ mod res;
 #[tokio::main]
 async fn main() {
 
-    // Loading the .env
-    dotenvy::dotenv().unwrap();
-
     // Setting up the db
     let pool = db::get_pool().await;
     // db::_reset(&pool).await;
