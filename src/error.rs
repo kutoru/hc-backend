@@ -1,13 +1,13 @@
 use axum::{response::{IntoResponse, Response}, http::{StatusCode, header::InvalidHeaderValue}, Json};
-use crate::{models::res::{ResultBody, ServerFunctionResponse}, res_body};
-
-pub type ServerResult<T> = core::result::Result<ServerFunctionResponse<T>, ResError>;
+use sqlx::error::ErrorKind;
+use crate::{res_body, res::ResultBody};
 
 #[derive(Debug)]
 pub enum ResError {
     MissingFields(String),  // one or more fields in headers or body are missing
     InvalidFields(String),  // one or more fields are present but have invalid values
     NotFound(String),  // when getting, patching or deleting something that doesn't exist
+    BadRequest(String),  // when the issue with the request is too hard to explain
 
     FSError(String),
     DBError(String),
@@ -25,9 +25,10 @@ impl std::error::Error for ResError {}
 impl IntoResponse for ResError {
     fn into_response(self) -> Response {
         match self {
-            Self::MissingFields(msg) => (StatusCode::BAD_REQUEST, get_body(msg)),
+            Self::MissingFields(msg) => (StatusCode::UNPROCESSABLE_ENTITY, get_body(msg)),
             Self::InvalidFields(msg) => (StatusCode::UNPROCESSABLE_ENTITY, get_body(msg)),
             Self::NotFound(msg) => (StatusCode::NOT_FOUND, get_body(msg)),
+            Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, get_body(msg)),
 
             Self::FSError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, get_body(msg)),
             Self::DBError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, get_body(msg)),
@@ -50,6 +51,10 @@ impl From<sqlx::error::Error> for ResError {
     fn from(value: sqlx::error::Error) -> Self {
         let msg = get_msg(&value);
         match value {
+            sqlx::Error::Database(e) => match e.kind() {
+                ErrorKind::ForeignKeyViolation => Self::BadRequest(msg),
+                _ => Self::DBError(msg),
+            },
             sqlx::Error::RowNotFound => Self::NotFound(msg),
             _ => Self::DBError(msg),
         }

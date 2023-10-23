@@ -2,7 +2,7 @@ use axum::{Router, routing::get, extract::Path, Extension, response::IntoRespons
 use sqlx::SqlitePool;
 use tokio_util::io::ReaderStream;
 
-use crate::{error::{ResError, ServerResult}, models::FileInfo, res_body, models::res::*};
+use crate::{models::FileInfo, res_body, res::*};
 
 pub fn get_router(pool: SqlitePool) -> Router {
     Router::new()

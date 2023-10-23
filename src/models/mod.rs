@@ -2,7 +2,6 @@ mod saves;
 mod files;
 mod note_categories;
 mod notes;
-pub mod res;
 
 pub use saves::*;
 pub use files::*;
